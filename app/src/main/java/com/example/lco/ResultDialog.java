@@ -25,7 +25,7 @@ public class ResultDialog extends DialogFragment {
         tvView= view.findViewById(R.id.result_text_view);
 
         Bundle bundle=getArguments();
-        DialText=bundle.getString(Facedetection.RESULT_TEXT);
+        DialText=bundle.getString(LCOFaceDetection.RESULT_TEXT);
         tvView.setText(DialText);
 
         pvButton.setOnClickListener(new View.OnClickListener() {
