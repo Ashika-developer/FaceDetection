@@ -3,21 +3,22 @@ package com.example.lco;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
-import android.support.annotation.Nullable;
-import android.support.v4.app.DialogFragment;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.DialogFragment;
+
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.ml.vision.FirebaseVision;
-import com.google.firebase.ml.vision.common.FirebaseVisionImage;
-import com.google.firebase.ml.vision.face.FirebaseVisionFace;
-import com.google.firebase.ml.vision.face.*;
-import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.face.Face;
+import com.google.mlkit.vision.face.FaceDetection;
+import com.google.mlkit.vision.face.FaceDetector;
+import com.google.mlkit.vision.face.FaceDetectorOptions;
 
 import java.util.List;
 
@@ -25,14 +26,13 @@ public class MainActivity extends AppCompatActivity {
 
     private Button cameraButton;
     private final static int REQUEST_IMAGE_CAPTURE = 124;
-    private  image; //Correction here
-    private FirebaseVisionFaceDetector detector;
+    private InputImage image;
+    private FaceDetector detector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
 
         FirebaseApp.initializeApp(this);
         cameraButton = findViewById(R.id.camera_button);
@@ -41,59 +41,50 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                if (takePictureIntent.resolveActivity(getPackageManager()) != null ){
+                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
                 }
             }
         });
-
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-
-        if(requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK){
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             Bundle extras = data.getExtras();
             Bitmap bitmap = (Bitmap) extras.get("data");
             detectFace(bitmap);
-
         }
-
-
     }
 
     private void detectFace(Bitmap bitmap) {
-        FirebaseVisionFaceDetectorOptions options =
-                new FirebaseVisionFaceDetectorOptions.Builder()
-                        .setModeType(FirebaseVisionFaceDetectorOptions.ACCURATE_MODE)
-                        .setClassificationType(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
-                        .setClassificationType(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
-                        .setMinFaceSize(0.15f)
-                        .setTrackingEnabled(true)
-                        .build();
-
+        FaceDetectorOptions options = new FaceDetectorOptions.Builder()
+                .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_ALL)
+                .setClassificationMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+                .setMinFaceSize(0.15f)
+                .enableTracking()
+                .build();
         try {
-            image = FirebaseVisionImage.fromBitmap(bitmap);
-            detector = FirebaseVision.getInstance()
-                    .getVisionFaceDetector(options);
+            image = InputImage.fromBitmap(bitmap, 0);
+            detector = FaceDetection.getClient(options);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        detector.detectInImage(image).addOnSuccessListener(new OnSuccessListener<List<FirebaseVisionFace>>() {
+        detector.process(image).addOnSuccessListener(new OnSuccessListener<List<Face>>() {
             @Override
-            public void onSuccess(List<FirebaseVisionFace> firebaseVisionFaces) {
+            public void onSuccess(List<Face> firebaseVisionFaces) {
                 String resultText = "";
                 int i = 1;
-                for (FirebaseVisionFace face : firebaseVisionFaces){
-                    resultText = resultText.concat("\n"+i+".")
-                            .concat("\nSmile: " + face.getSmilingProbability()*100+"%")
-                            .concat("\nLeftEye "+ face.getLeftEyeOpenProbability()*100+"%");
-
+                for (Face face : firebaseVisionFaces) {
+                    resultText = resultText.concat("\n" + i + ".")
+                            .concat("\nSmile: " + face.getSmilingProbability() * 100 + "%")
+                            .concat("\nLeftEye " + face.getLeftEyeOpenProbability() * 100 + "%");
                     i++;
                 }
 
-                if (firebaseVisionFaces.size() == 0){
+                if (firebaseVisionFaces.size() == 0) {
                     Toast.makeText(MainActivity.this, "NO FACES", Toast.LENGTH_SHORT).show();
                 } else {
                     Bundle bundle = new Bundle();
@@ -105,12 +96,5 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-
     }
 }
-
-
-
-
-
